@@ -46,17 +46,17 @@ export function MarketDataPage() {
   }, [marketData]);
 
   return (
-    <div className="space-y-6">
+    <div className="market-page">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Market Data</h1>
-        <p className="text-gray-500">Browse available assets and explore historical OHLCV price data.</p>
+      <div className="market-header">
+        <h1>Market Data</h1>
+        <p>Browse available assets and explore historical OHLCV price data.</p>
       </div>
 
       {/* Controls */}
-      <Card>
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-48">
+      <Card className="market-toolbar-card">
+        <div className="market-toolbar">
+          <div className="market-toolbar-control market-toolbar-control-wide">
             <AssetSelector
               assets={assets}
               selectedSymbol={selectedSymbol}
@@ -70,7 +70,11 @@ export function MarketDataPage() {
             onFromChange={setFrom}
             onToChange={setTo}
           />
-          <Button onClick={handleLoad} disabled={!selectedSymbol || isFetchingData}>
+          <Button
+            onClick={handleLoad}
+            disabled={!selectedSymbol || isFetchingData}
+            className="market-load-button"
+          >
             {isFetchingData ? 'Loading...' : 'Load Data'}
           </Button>
         </div>
@@ -78,48 +82,51 @@ export function MarketDataPage() {
 
       {/* Asset Catalog */}
       {!marketData && !isFetchingData && (
-        <Card>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Available Assets</h2>
+        <Card className="market-catalog-card">
+          <div className="market-section-head">
+            <div>
+              <p className="market-kicker">Asset catalog</p>
+              <h2>Available Assets</h2>
+            </div>
+          </div>
           {isLoadingAssets ? <LoadingSpinner /> : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="market-table-wrap">
+              <table className="data-table market-data-table">
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left py-3 px-2 font-semibold text-gray-600">Symbol</th>
-                    <th className="text-left py-3 px-2 font-semibold text-gray-600">Name</th>
-                    <th className="text-left py-3 px-2 font-semibold text-gray-600">Exchange</th>
-                    <th className="text-left py-3 px-2 font-semibold text-gray-600">Type</th>
-                    <th className="text-right py-3 px-2 font-semibold text-gray-600">Candles</th>
-                    <th className="text-right py-3 px-2 font-semibold text-gray-600">From</th>
-                    <th className="text-right py-3 px-2 font-semibold text-gray-600">To</th>
-                    <th className="text-right py-3 px-2 font-semibold text-gray-600">Action</th>
+                  <tr>
+                    <th>Symbol</th>
+                    <th>Name</th>
+                    <th>Exchange</th>
+                    <th>Type</th>
+                    <th className="market-table-right">Candles</th>
+                    <th className="market-table-right">From</th>
+                    <th className="market-table-right">To</th>
+                    <th className="market-table-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {assets.map((asset) => (
-                    <tr key={asset.symbol} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-2">
-                        <span className="font-mono font-bold text-blue-600">{asset.symbol}</span>
+                    <tr key={asset.symbol} className="market-asset-row">
+                      <td>
+                        <span className="market-symbol-pill">{asset.symbol}</span>
                       </td>
-                      <td className="py-3 px-2 text-gray-700">{asset.name}</td>
-                      <td className="py-3 px-2 text-gray-500">{asset.exchange || '—'}</td>
-                      <td className="py-3 px-2">
-                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
-                          {asset.asset_type}
-                        </span>
+                      <td>{asset.name}</td>
+                      <td>{asset.exchange || '—'}</td>
+                      <td>
+                        <span className="market-type-badge">{asset.asset_type}</span>
                       </td>
-                      <td className="py-3 px-2 text-right font-mono text-gray-700">
+                      <td className="market-table-right market-mono">
                         {asset.candle_count ? asset.candle_count.toLocaleString() : '—'}
                       </td>
-                      <td className="py-3 px-2 text-right text-gray-500 text-xs">
+                      <td className="market-table-right market-small-text">
                         {asset.data_start ? new Date(asset.data_start).toLocaleDateString() : '—'}
                       </td>
-                      <td className="py-3 px-2 text-right text-gray-500 text-xs">
+                      <td className="market-table-right market-small-text">
                         {asset.data_end ? new Date(asset.data_end).toLocaleDateString() : '—'}
                       </td>
-                      <td className="py-3 px-2 text-right">
+                      <td className="market-table-right">
                         <button
-                          className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                          className="market-select-button"
                           onClick={() => {
                             setSelectedSymbol(asset.symbol);
                             setFetchTrigger(t => t + 1);
@@ -133,8 +140,8 @@ export function MarketDataPage() {
                 </tbody>
               </table>
               {assets.length === 0 && (
-                <div className="text-center py-8 text-gray-400">
-                  No assets found. Run <code className="bg-gray-100 px-1 rounded">npm run db:seed && npm run db:seed:market</code> to populate data.
+                <div className="market-empty-state">
+                  No assets found. Run <code>npm run db:seed && npm run db:seed:market</code> to populate data.
                 </div>
               )}
             </div>
@@ -144,17 +151,17 @@ export function MarketDataPage() {
 
       {/* Error */}
       {dataError && (
-        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg">
+        <div className="market-error-state">
           Failed to load market data. Please try again.
         </div>
       )}
 
       {/* Loading */}
       {isFetchingData && (
-        <Card>
-          <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <Card className="market-loading-card">
+          <div className="market-loading-panel">
             <LoadingSpinner />
-            <p className="text-gray-500">Fetching {selectedSymbol} data…</p>
+            <p>Fetching {selectedSymbol} data…</p>
           </div>
         </Card>
       )}
@@ -163,22 +170,22 @@ export function MarketDataPage() {
       {marketData && !isFetchingData && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <Card>
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Symbol</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">{marketData.symbol}</p>
+          <div className="market-summary-grid">
+            <Card className="market-summary-card market-summary-card-primary">
+              <p className="market-card-label">Symbol</p>
+              <p className="market-card-value market-card-value-highlight">{marketData.symbol}</p>
             </Card>
-            <Card>
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Candles</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{marketData.count.toLocaleString()}</p>
+            <Card className="market-summary-card">
+              <p className="market-card-label">Candles</p>
+              <p className="market-card-value">{marketData.count.toLocaleString()}</p>
             </Card>
-            <Card>
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Coverage</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">{coverageInfo?.coverage ?? '—'}%</p>
+            <Card className="market-summary-card market-summary-card-success">
+              <p className="market-card-label">Coverage</p>
+              <p className="market-card-value market-card-value-success">{coverageInfo?.coverage ?? '—'}%</p>
             </Card>
-            <Card>
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Latest Close</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
+            <Card className="market-summary-card">
+              <p className="market-card-label">Latest Close</p>
+              <p className="market-card-value">
                 {marketData.candles.length > 0
                   ? `$${marketData.candles[marketData.candles.length - 1].close.toFixed(2)}`
                   : '—'}
@@ -187,8 +194,16 @@ export function MarketDataPage() {
           </div>
 
           {/* Price Chart */}
-          <Card className="p-4" style={{ height: '520px' }}>
-            <PriceChart candles={marketData.candles} symbol={marketData.symbol} />
+          <Card className="market-chart-card">
+            <div className="market-chart-header">
+              <div>
+                <p className="market-kicker">Price trend</p>
+                <h2>{marketData.symbol} OHLCV Chart</h2>
+              </div>
+            </div>
+            <div className="market-chart-panel">
+              <PriceChart candles={marketData.candles} symbol={marketData.symbol} />
+            </div>
           </Card>
         </>
       )}

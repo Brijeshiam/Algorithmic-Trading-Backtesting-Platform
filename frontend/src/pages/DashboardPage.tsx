@@ -50,13 +50,13 @@ export function DashboardPage() {
       </div>
 
       {/* Metric Cards */}
-      <div className="grid grid-4 gap-6 mb-6">
+      <div className="grid-4 mb-8">
         <div className="metric-card">
           <div className="metric-card-icon blue">🧩</div>
           <span className="metric-card-label">Total Strategies</span>
           <span className="metric-card-value">{summary?.totalStrategies || 0}</span>
           <span className="metric-card-sub">
-            <Link to="/strategies/new" style={{ fontSize: 'inherit' }}>+ Create new</Link>
+            <Link to="/strategies/new" style={{ fontSize: 'inherit', color: 'var(--color-primary-600)', textDecoration: 'none', fontWeight: '500' }}>+ Create new</Link>
           </span>
         </div>
 
@@ -65,7 +65,7 @@ export function DashboardPage() {
           <span className="metric-card-label">Total Backtests</span>
           <span className="metric-card-value">{summary?.totalBacktests || 0}</span>
           <span className="metric-card-sub">
-            <Link to="/backtests" style={{ fontSize: 'inherit' }}>View all</Link>
+            <Link to="/backtests" style={{ fontSize: 'inherit', color: 'var(--color-success-600)', textDecoration: 'none', fontWeight: '500' }}>View all</Link>
           </span>
         </div>
 
@@ -95,7 +95,7 @@ export function DashboardPage() {
       </div>
 
       {/* Quick Actions + Recent Backtests */}
-      <div className="grid grid-2 gap-6">
+      <div className="grid-2" style={{ marginBottom: 'var(--space-8)' }}>
         {/* Quick Actions */}
         <div className="card">
           <div className="card-header">
