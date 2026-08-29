@@ -1,0 +1,20 @@
+{
+  "name": "algo-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Algorithmic Trading & Backtesting Platform",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "quant-engine"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=backend & npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:seed": "npm run db:seed --workspace=backend"
+  }
+}
