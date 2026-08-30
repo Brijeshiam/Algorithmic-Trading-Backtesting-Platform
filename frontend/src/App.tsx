@@ -14,6 +14,7 @@ import { ComparePage } from './pages/ComparePage';
 import { MonteCarloPage } from './pages/MonteCarloPage';
 import { LeaderboardPage } from './pages/LeaderboardPage';
 import { PaperTradingPage } from './pages/PaperTradingPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { MarketDataPage } from './pages/MarketDataPage';
 import { BacktestListPage } from './pages/BacktestListPage';
 import { BacktestSetupPage } from './pages/BacktestSetupPage';
@@ -76,7 +77,7 @@ export default function App() {
             <Route path="/monte-carlo" element={<MonteCarloPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/paper-trading" element={<PaperTradingPage />} />
-            <Route path="/profile" element={<PlaceholderPage title="Profile" description="Manage your account" />} />
+            <Route path="/profile" element={<ProfilePage />} />
           </Route>
 
           {/* Catch-all */}
