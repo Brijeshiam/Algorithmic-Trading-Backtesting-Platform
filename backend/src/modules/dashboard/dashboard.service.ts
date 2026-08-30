@@ -21,25 +21,25 @@ export class DashboardService {
       // Total backtests
       query('SELECT COUNT(*) FROM backtests WHERE user_id = $1', [userId]),
       
-      // Best Sharpe ratio
+      // Best Sharpe ratio (prioritize backtests with executed trades)
       query(
         `SELECT bm.sharpe_ratio, s.name as strategy_name
          FROM backtest_metrics bm
          JOIN backtests b ON b.id = bm.backtest_id
          JOIN strategies s ON s.id = b.strategy_id
          WHERE b.user_id = $1 AND bm.sharpe_ratio IS NOT NULL
-         ORDER BY bm.sharpe_ratio DESC LIMIT 1`,
+         ORDER BY (CASE WHEN bm.trade_count > 0 THEN 1 ELSE 0 END) DESC, bm.sharpe_ratio DESC LIMIT 1`,
         [userId]
       ),
       
-      // Worst max drawdown
+      // Worst max drawdown (highest percentage drawdown among backtests with trades)
       query(
         `SELECT bm.max_drawdown, s.name as strategy_name
          FROM backtest_metrics bm
          JOIN backtests b ON b.id = bm.backtest_id
          JOIN strategies s ON s.id = b.strategy_id
          WHERE b.user_id = $1 AND bm.max_drawdown IS NOT NULL
-         ORDER BY bm.max_drawdown ASC LIMIT 1`,
+         ORDER BY (CASE WHEN bm.trade_count > 0 THEN 1 ELSE 0 END) DESC, bm.max_drawdown DESC LIMIT 1`,
         [userId]
       ),
       

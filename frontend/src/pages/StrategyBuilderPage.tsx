@@ -4,8 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { strategiesService, StrategyDefinition } from '../services/strategies.service';
 import { ConditionGroup } from '../components/strategy/ConditionGroup';
 import { StrategyPreview } from '../components/strategy/StrategyPreview';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 const DEFAULT_STRATEGY: StrategyDefinition = {
@@ -68,12 +66,11 @@ export function StrategyBuilderPage() {
 
   const handleSave = () => {
     if (!name.trim()) {
-      setError('Strategy name is required');
+      setError('Please provide a name for your strategy before saving.');
       return;
     }
     setError('');
     
-    // Clean up definition before sending (e.g. remove empty groups if necessary)
     saveMutation.mutate({
       name,
       description,
@@ -81,49 +78,174 @@ export function StrategyBuilderPage() {
     });
   };
 
-  if (isEditing && isLoading) return <div className="p-12 flex justify-center"><LoadingSpinner /></div>;
+  if (isEditing && isLoading) {
+    return (
+      <div className="loading-overlay">
+        <div className="spinner spinner-lg" />
+        <span>Loading strategy...</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full flex flex-col -mx-4 -mt-4 p-4 lg:mx-0 lg:mt-0 lg:p-0">
-      <div className="flex justify-between items-center mb-6">
+    <div className="animate-fadeIn" style={{ maxWidth: '1300px', margin: '0 auto' }}>
+      
+      {/* ── Page Header & Top Actions ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        marginBottom: 'var(--space-6)',
+        flexWrap: 'wrap',
+        gap: 'var(--space-4)',
+      }}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{isEditing ? 'Edit Strategy' : 'New Strategy'}</h1>
-          <p className="text-gray-500">Build your rules using the visual editor.</p>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+            background: 'var(--color-primary-50)',
+            color: 'var(--color-primary-700)',
+            border: '1px solid var(--color-primary-100)',
+            padding: '3px 12px',
+            borderRadius: 'var(--radius-full)',
+            fontSize: 'var(--font-size-xs)',
+            fontWeight: 'var(--font-weight-semibold)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.07em',
+            marginBottom: 'var(--space-2)',
+          }}>
+            🧩 Strategy Builder
+          </div>
+          <h1 className="page-title">{isEditing ? 'Edit Strategy' : 'New Trading Strategy'}</h1>
+          <p className="page-subtitle">Configure rule-based algorithmic entry and exit logic with indicators.</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button onClick={handleSave} isLoading={saveMutation.isPending}>Save Strategy</Button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate(-1)}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={saveMutation.isPending}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+            }}
+          >
+            {saveMutation.isPending ? (
+              <>
+                <div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
+                Saving...
+              </>
+            ) : (
+              <>💾 Save Strategy</>
+            )}
+          </button>
         </div>
       </div>
 
+      {/* ── Error Banner ── */}
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-md mb-6 border border-red-200">
-          {error}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+          background: 'var(--color-danger-50)',
+          color: 'var(--color-danger-700)',
+          border: '1px solid var(--color-danger-100)',
+          borderLeft: '4px solid var(--color-danger-500)',
+          padding: 'var(--space-4)',
+          borderRadius: 'var(--radius-lg)',
+          marginBottom: 'var(--space-6)',
+          fontSize: 'var(--font-size-sm)',
+          fontWeight: 'var(--font-weight-medium)',
+        }}>
+          <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 overflow-hidden">
-        {/* Left Column: Form & Visual Builder */}
-        <div className="lg:col-span-2 flex flex-col gap-6 overflow-y-auto pr-2 pb-12">
-          {/* Meta Info */}
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h2 className="text-lg font-semibold mb-4">Strategy Details</h2>
-            <div className="space-y-4">
-              <Input 
-                label="Strategy Name" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                placeholder="e.g. Moving Average Crossover" 
-                required 
-              />
+      {/* ── Main Two-Column Layout ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1.6fr) minmax(320px, 1fr)',
+        gap: 'var(--space-6)',
+        alignItems: 'start',
+      }}>
+
+        {/* ── Left Column: Builder Cards ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+          
+          {/* Card 1: Strategy Metadata */}
+          <div className="card" style={{ padding: 'var(--space-6)' }}>
+            <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
+              <div>
+                <h3 className="card-title">Strategy Details</h3>
+                <p className="card-subtitle">General identification and description for your algorithm.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label form-required">Strategy Name</label>
+                <input
+                  type="text"
+                  required
+                  className="form-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Golden Cross SMA 14/50 Breakout"
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Description / Thesis (Optional)</label>
+                <textarea
+                  className="form-input"
+                  rows={2}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe your market hypothesis or underlying trading logic..."
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Entry Conditions */}
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Entry Rules</h2>
+          {/* Card 2: Entry Rules */}
+          <div className="card" style={{ padding: 'var(--space-6)' }}>
+            <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <span style={{ fontSize: '1.1rem' }}>📈</span>
+                  <h3 className="card-title" style={{ margin: 0 }}>Entry Rules</h3>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 'var(--font-weight-extrabold)',
+                    background: 'var(--color-primary-100)',
+                    color: 'var(--color-primary-700)',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}>
+                    Required
+                  </span>
+                </div>
+                <p className="card-subtitle">
+                  Criteria that must trigger before opening a long position.
+                </p>
+              </div>
             </div>
+
             {definition.entryConditions ? (
               <ConditionGroup
                 group={definition.entryConditions}
@@ -131,20 +253,53 @@ export function StrategyBuilderPage() {
                 isRoot={true}
               />
             ) : (
-              <div className="text-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
-                <p className="text-gray-500 mb-4">No entry conditions defined.</p>
-                <Button onClick={() => setDefinition({ ...definition, entryConditions: { operator: 'AND', conditions: [] } })}>
-                  Add Entry Rules
-                </Button>
+              <div style={{
+                padding: 'var(--space-8)',
+                textAlign: 'center',
+                background: 'var(--color-gray-50)',
+                borderRadius: 'var(--radius-xl)',
+                border: '1px dashed var(--color-gray-300)',
+              }}>
+                <p style={{ color: 'var(--color-gray-500)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--space-4)' }}>
+                  No entry conditions configured.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setDefinition({ ...definition, entryConditions: { operator: 'AND', conditions: [] } })}
+                >
+                  + Add Entry Rules
+                </button>
               </div>
             )}
           </div>
 
-          {/* Exit Conditions (Optional) */}
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Exit Rules (Optional)</h2>
+          {/* Card 3: Exit Rules */}
+          <div className="card" style={{ padding: 'var(--space-6)' }}>
+            <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <span style={{ fontSize: '1.1rem' }}>📉</span>
+                  <h3 className="card-title" style={{ margin: 0 }}>Exit Rules</h3>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 'var(--font-weight-bold)',
+                    background: 'var(--color-gray-100)',
+                    color: 'var(--color-gray-600)',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-full)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}>
+                    Optional
+                  </span>
+                </div>
+                <p className="card-subtitle">
+                  Custom indicator conditions to close positions before holding period end.
+                </p>
+              </div>
             </div>
+
             {definition.exitConditions ? (
               <ConditionGroup
                 group={definition.exitConditions}
@@ -157,19 +312,138 @@ export function StrategyBuilderPage() {
                 }}
               />
             ) : (
-              <div className="text-center p-4 border-2 border-dashed border-gray-300 rounded-lg">
-                <Button variant="outline" onClick={() => setDefinition({ ...definition, exitConditions: { operator: 'AND', conditions: [] } })}>
-                  Add Exit Rules
-                </Button>
+              <div style={{
+                padding: 'var(--space-6)',
+                textAlign: 'center',
+                background: 'var(--color-gray-50)',
+                borderRadius: 'var(--radius-xl)',
+                border: '1px dashed var(--color-gray-300)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-800)' }}>
+                    No custom exit condition
+                  </div>
+                  <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-gray-400)' }}>
+                    Strategy will hold until reverse signals occur or position stops are hit.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setDefinition({ ...definition, exitConditions: { operator: 'AND', conditions: [] } })}
+                >
+                  + Add Exit Rules
+                </button>
               </div>
             )}
           </div>
+
+          {/* Card 4: Position Sizing */}
+          <div className="card" style={{ padding: 'var(--space-6)' }}>
+            <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <span style={{ fontSize: '1.1rem' }}>💰</span>
+                  <h3 className="card-title" style={{ margin: 0 }}>Position Sizing & Allocation</h3>
+                </div>
+                <p className="card-subtitle">Define capital distribution for each trade entry.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Sizing Model</label>
+                <select
+                  className="form-input"
+                  value={definition.positionSizing?.type || 'PERCENTAGE'}
+                  onChange={(e) => {
+                    const type = e.target.value as 'PERCENTAGE' | 'FIXED_AMOUNT';
+                    setDefinition({
+                      ...definition,
+                      positionSizing: {
+                        type,
+                        value: type === 'PERCENTAGE' ? 100 : 10000
+                      }
+                    });
+                  }}
+                >
+                  <option value="PERCENTAGE">Percentage of Portfolio (%)</option>
+                  <option value="FIXED_AMOUNT">Fixed Dollar Amount ($)</option>
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">
+                  {definition.positionSizing?.type === 'FIXED_AMOUNT' ? 'Amount ($ USD)' : 'Allocation Percentage (%)'}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  className="form-input"
+                  value={definition.positionSizing?.value ?? 100}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setDefinition({
+                      ...definition,
+                      positionSizing: {
+                        type: definition.positionSizing?.type || 'PERCENTAGE',
+                        value: val
+                      }
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Right Column: Preview */}
-        <div className="hidden lg:block h-[calc(100vh-140px)] sticky top-0">
-          <StrategyPreview definition={definition} />
+        {/* ── Right Column: Sticky Live Spec Preview & Guide ── */}
+        <div style={{
+          position: 'sticky',
+          top: 'var(--space-6)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 'var(--space-5)',
+        }}>
+          <div style={{ height: '420px' }}>
+            <StrategyPreview definition={definition} />
+          </div>
+
+          {/* Quick Guide Card */}
+          <div style={{
+            background: 'var(--color-primary-50)',
+            border: '1px solid var(--color-primary-100)',
+            borderRadius: 'var(--radius-xl)',
+            padding: 'var(--space-5)',
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              fontSize: 'var(--font-size-sm)',
+              fontWeight: 'var(--font-weight-bold)',
+              color: 'var(--color-primary-800)',
+              marginBottom: 'var(--space-2)',
+            }}>
+              💡 Strategy Tips
+            </div>
+            <ul style={{
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--color-primary-700)',
+              lineHeight: 1.6,
+              paddingLeft: 'var(--space-4)',
+              margin: 0,
+            }}>
+              <li><strong>CROSSES_ABOVE:</strong> Triggers on the exact candle where Indicator A breaks above Indicator B.</li>
+              <li><strong>RSI / Volume:</strong> Combine moving averages with momentum oscillators (e.g. RSI &lt; 30) for mean-reversion.</li>
+              <li><strong>Backtest after saving:</strong> Run historical backtests to analyze risk metrics and maximum drawdowns.</li>
+            </ul>
+          </div>
         </div>
+
       </div>
     </div>
   );

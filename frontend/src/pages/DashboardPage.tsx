@@ -1,28 +1,16 @@
-import { useEffect, useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { dashboardService, DashboardSummary } from '../services/dashboard.service';
+import { useQuery } from '@tanstack/react-query';
+import { dashboardService } from '../services/dashboard.service';
 
 export function DashboardPage() {
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: summary, isLoading, error, refetch } = useQuery({
+    queryKey: ['dashboard_summary'],
+    queryFn: dashboardService.getSummary,
+    refetchOnWindowFocus: true,
+  });
 
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  const loadDashboard = async () => {
-    try {
-      const data = await dashboardService.getSummary();
-      setSummary(data);
-    } catch (err: any) {
-      setError('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="loading-overlay">
         <div className="spinner spinner-lg" />
@@ -36,8 +24,8 @@ export function DashboardPage() {
       <div className="empty-state">
         <div className="empty-state-icon">⚠️</div>
         <h3 className="empty-state-title">Something went wrong</h3>
-        <p className="empty-state-description">{error}</p>
-        <button className="btn btn-primary" onClick={loadDashboard}>Retry</button>
+        <p className="empty-state-description">Failed to load dashboard data</p>
+        <button className="btn btn-primary" onClick={() => refetch()}>Retry</button>
       </div>
     );
   }
