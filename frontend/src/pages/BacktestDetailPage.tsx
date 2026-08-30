@@ -6,8 +6,6 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EquityChart } from '../components/backtest/EquityChart';
 import { MetricsGrid } from '../components/backtest/MetricsGrid';
 import { TradeLog } from '../components/backtest/TradeLog';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
 
 export function BacktestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,104 +18,184 @@ export function BacktestDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <LoadingSpinner />
+      <div className="loading-overlay">
+        <div className="spinner spinner-lg" />
+        <span>Loading backtest report...</span>
       </div>
     );
   }
 
   if (isError || !report) {
     return (
-      <div className="bg-red-50 text-red-700 p-6 rounded-lg border border-red-100">
-        <h2 className="text-lg font-bold mb-2">Error Loading Backtest</h2>
-        <p>Could not load the backtest report. It may have been deleted or the ID is invalid.</p>
-        <Link to="/backtests" className="inline-block mt-4 text-blue-600 font-medium hover:underline">
-          &larr; Back to List
+      <div className="empty-state" style={{ maxWidth: '600px', margin: 'var(--space-12) auto' }}>
+        <div className="empty-state-icon">⚠️</div>
+        <h3 className="empty-state-title">Report Not Found</h3>
+        <p className="empty-state-description">
+          The requested backtest report could not be loaded. It may have been deleted or the ID is invalid.
+        </p>
+        <Link to="/backtests" className="btn btn-primary" style={{ marginTop: 'var(--space-4)' }}>
+          ← Back to Backtest History
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+    <div className="animate-fadeIn" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      
+      {/* ── Top Navigation & Actions Bar ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 'var(--space-4)',
+      }}>
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <Link to="/backtests" className="text-gray-400 hover:text-gray-600 transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
+          {/* Breadcrumb & Status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-2)' }}>
+            <Link to="/backtests" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: 'var(--font-size-xs)',
+              color: 'var(--color-gray-500)',
+              textDecoration: 'none',
+              fontWeight: 'var(--font-weight-semibold)',
+            }}>
+              ← Back to History
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">{report.strategy_name}</h1>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-              report.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-200' :
-              report.status === 'FAILED' ? 'bg-red-50 text-red-700 border-red-200' :
-              'bg-blue-50 text-blue-700 border-blue-200'
-            }`}>
-              {report.status}
+            <span style={{ color: 'var(--color-gray-300)' }}>•</span>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '2px 10px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: 'var(--font-size-xs)',
+              fontWeight: 'var(--font-weight-bold)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              background: report.status === 'COMPLETED' ? 'var(--color-success-50)' : report.status === 'FAILED' ? 'var(--color-danger-50)' : 'var(--color-primary-50)',
+              color: report.status === 'COMPLETED' ? 'var(--color-success-700)' : report.status === 'FAILED' ? 'var(--color-danger-700)' : 'var(--color-primary-700)',
+              border: `1px solid ${report.status === 'COMPLETED' ? 'var(--color-success-200)' : report.status === 'FAILED' ? 'var(--color-danger-200)' : 'var(--color-primary-200)'}`,
+            }}>
+              {report.status === 'COMPLETED' ? '✓ Completed' : report.status === 'FAILED' ? '❌ Failed' : '⏳ Running'}
             </span>
           </div>
-          <p className="text-gray-500 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm pl-8">
-            <span className="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">{report.symbol}</span>
-            <span>{new Date(report.date_range_start).toLocaleDateString()} &rarr; {new Date(report.date_range_end).toLocaleDateString()}</span>
-            <span>Started: {new Date(report.created_at).toLocaleString()}</span>
-          </p>
+
+          {/* Title */}
+          <h1 className="page-title" style={{ marginBottom: 'var(--space-2)' }}>
+            {report.strategy_name}
+          </h1>
+
+          {/* Subtitle Tags */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap', fontSize: 'var(--font-size-sm)', color: 'var(--color-gray-500)' }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontWeight: 'var(--font-weight-bold)',
+              background: 'var(--color-primary-50)',
+              color: 'var(--color-primary-700)',
+              border: '1px solid var(--color-primary-100)',
+              padding: '2px 8px',
+              borderRadius: 'var(--radius-md)',
+            }}>
+              {report.symbol}
+            </span>
+            <span>
+              📅 {new Date(report.date_range_start).toLocaleDateString()} &rarr; {new Date(report.date_range_end).toLocaleDateString()}
+            </span>
+            <span>•</span>
+            <span>Executed {new Date(report.created_at).toLocaleString()}</span>
+          </div>
         </div>
-        
-        <div className="flex gap-2">
-          <Link to={`/strategies/${report.strategy_id}`}>
-            <Button variant="secondary">View Strategy</Button>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <Link to="/simulations/monte-carlo" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            🎲 Monte Carlo
           </Link>
-          <Link to={`/backtests/new`} state={{ strategyId: report.strategy_id }}>
-            <Button>Run Again</Button>
+          <Link to="/compare" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            ⚖️ Compare
+          </Link>
+          <Link to={`/strategies/${report.strategy_id}`} className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            🧩 Strategy Spec
+          </Link>
+          <Link to="/backtests/new" state={{ strategyId: report.strategy_id }} className="btn btn-primary" style={{ textDecoration: 'none' }}>
+            ⚡ Run Again
           </Link>
         </div>
       </div>
 
+      {/* ── Error Banner ── */}
       {report.error_message && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg text-sm">
-          <span className="font-bold">Execution Error:</span> {report.error_message}
+        <div style={{
+          background: 'var(--color-danger-50)',
+          color: 'var(--color-danger-700)',
+          borderLeft: '4px solid var(--color-danger-500)',
+          padding: 'var(--space-4)',
+          borderRadius: 'var(--radius-lg)',
+          fontSize: 'var(--font-size-sm)',
+        }}>
+          <strong>Execution Error:</strong> {report.error_message}
         </div>
       )}
 
-      {/* Main content only visible if completed */}
+      {/* ── Main Content: Metrics + Chart + Trades ── */}
       {report.status === 'COMPLETED' && (
         <>
-          {/* Key Metrics Grid */}
+          {/* Key Quantitative Metrics */}
           <MetricsGrid report={report} />
 
-          {/* Equity Curve */}
-          <Card className="flex flex-col gap-4">
-            <div className="flex justify-between items-center px-2">
-              <h3 className="font-semibold text-gray-900">Equity Curve</h3>
-              <div className="flex gap-4 text-sm font-medium">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                  <span className="text-gray-600">Total Equity</span>
+          {/* Equity Curve Card */}
+          <div className="card" style={{ padding: 'var(--space-6)' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 'var(--space-4)',
+              paddingBottom: 'var(--space-3)',
+              borderBottom: '1px solid var(--color-gray-100)',
+              flexWrap: 'wrap',
+              gap: 'var(--space-2)',
+            }}>
+              <div>
+                <h3 className="card-title" style={{ margin: 0 }}>Portfolio Equity Curve</h3>
+                <p className="card-subtitle">Mark-to-market portfolio value & cash allocation trajectory.</p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-semibold)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#2563eb' }} />
+                  <span style={{ color: 'var(--color-gray-700)' }}>Total Equity</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-gray-400"></div>
-                  <span className="text-gray-600">Cash</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#9ca3af' }} />
+                  <span style={{ color: 'var(--color-gray-500)' }}>Cash Reserves</span>
                 </div>
               </div>
             </div>
-            <div className="flex-1 min-h-[400px]">
-              <EquityChart snapshots={report.equitySnapshots} />
-            </div>
-          </Card>
 
-          {/* Trade Log */}
-          <TradeLog trades={report.trades} />
+            <div style={{ height: '420px' }}>
+              <EquityChart snapshots={report.equitySnapshots || []} />
+            </div>
+          </div>
+
+          {/* Trade Execution Log */}
+          <TradeLog trades={report.trades || []} />
         </>
       )}
 
       {report.status === 'RUNNING' && (
-        <Card className="py-20 flex flex-col items-center justify-center gap-4">
+        <div className="card" style={{ padding: 'var(--space-20)', textAlign: 'center' }}>
           <LoadingSpinner />
-          <p className="text-gray-600 font-medium animate-pulse">Running Simulation...</p>
-        </Card>
+          <h3 className="card-title" style={{ marginTop: 'var(--space-4)' }}>Simulating Strategy Execution...</h3>
+          <p style={{ color: 'var(--color-gray-400)', fontSize: 'var(--font-size-sm)' }}>
+            Evaluating indicators and simulating order fills. This will take a moment.
+          </p>
+        </div>
       )}
+
     </div>
   );
 }
