@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { paperService, PaperAccount, PaperOrder, Position } from '../services/paper.service';
 import { marketService } from '../services/market.service';
+import { strategiesService, Strategy } from '../services/strategies.service';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 
 /* ─── Helpers ───────────────────────────────── */
@@ -98,9 +100,10 @@ function NoAccountView({ onInit, isPending }: { onInit: () => void; isPending: b
           marginBottom: 'var(--space-8)',
         }}>
           {[
-            { icon: '💰', label: '$100,000 Starting Capital' },
-            { icon: '🛡️', label: 'Zero Real Risk' },
-            { icon: '📊', label: 'Full Order History' },
+            { icon: '💵', label: '$100,000 Starting Cash' },
+            { icon: '📈', label: 'Simulated Order Execution' },
+            { icon: '🛡️', label: 'Zero Financial Risk' },
+            { icon: '🧩', label: 'Test Your Created Strategies' },
           ].map(f => (
             <div key={f.label} style={{
               display: 'flex',
@@ -134,29 +137,74 @@ function NoAccountView({ onInit, isPending }: { onInit: () => void; isPending: b
   );
 }
 
-/* ─── Manual Trade Panel ────────────────────── */
-function ManualTradePanel({ accountId }: { accountId: string }) {
+/* ─── Manual Trade Panel with Strategy Link ─── */
+function ManualTradePanel({ 
+  accountId,
+  prefillStrategy,
+  prefillSymbol,
+  prefillSide = 'BUY',
+  prefillQuantity,
+}: { 
+  accountId: string;
+  prefillStrategy?: Strategy | null;
+  prefillSymbol?: string;
+  prefillSide?: 'BUY' | 'SELL';
+  prefillQuantity?: string;
+}) {
   const queryClient = useQueryClient();
-  const [symbol, setSymbol] = useState('');
-  const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
-  const [quantity, setQuantity] = useState('');
-  const [price, setPrice] = useState('');
+  const [selectedStrategyId, setSelectedStrategyId] = useState(prefillStrategy?.id || '');
+  const [symbol, setSymbol] = useState(prefillSymbol || 'AAPL');
+  const [side, setSide] = useState<'BUY' | 'SELL'>(prefillSide);
+  const [quantity, setQuantity] = useState(prefillQuantity || '50');
+  const [price, setPrice] = useState('150.00');
 
   const { data: assets = [] } = useQuery({
     queryKey: ['assets'],
     queryFn: marketService.getAssets,
   });
 
+  const { data: strategies = [] } = useQuery({
+    queryKey: ['strategies'],
+    queryFn: () => strategiesService.getStrategies(),
+  });
+
+  // When asset changes, auto-fill current real market price
+  useEffect(() => {
+    if (symbol && assets.length > 0) {
+      const asset = assets.find((a: any) => a.symbol === symbol);
+      if (asset?.latest_price) {
+        setPrice(Number(asset.latest_price).toFixed(2));
+      }
+    }
+  }, [symbol, assets]);
+
+  // Update when prefill values change
+  useEffect(() => {
+    if (prefillStrategy) setSelectedStrategyId(prefillStrategy.id);
+  }, [prefillStrategy]);
+
+  useEffect(() => {
+    if (prefillSymbol) setSymbol(prefillSymbol);
+  }, [prefillSymbol]);
+
+  useEffect(() => {
+    if (prefillSide) setSide(prefillSide);
+  }, [prefillSide]);
+
+  useEffect(() => {
+    if (prefillQuantity) setQuantity(prefillQuantity);
+  }, [prefillQuantity]);
+
+  const selectedStrategy = strategies.find(s => s.id === selectedStrategyId);
+
   const orderMutation = useMutation({
     mutationFn: async () => {
-      const mockPrice = price ? Number(price) : 100 + Math.random() * 100;
-      return paperService.placeOrder(symbol, side, Number(quantity), mockPrice);
+      const targetPrice = price ? Number(price) : 100;
+      return paperService.placeOrder(symbol, side, Number(quantity), targetPrice);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['paper-account'] });
       queryClient.invalidateQueries({ queryKey: ['paper-orders'] });
-      setQuantity('');
-      setPrice('');
     },
   });
 
@@ -168,7 +216,10 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
   return (
     <div className="card" style={{ padding: 'var(--space-6)' }}>
       <div className="card-header" style={{ marginBottom: 'var(--space-5)' }}>
-        <h3 className="card-title">Place Order</h3>
+        <div>
+          <h3 className="card-title">Execute Paper Order</h3>
+          <p className="card-subtitle">Execute simulated market orders linked to your strategies.</p>
+        </div>
         <span className="badge badge-neutral" style={{
           background: 'var(--color-success-50)',
           color: 'var(--color-success-700)',
@@ -181,6 +232,55 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
 
       <form onSubmit={(e) => { e.preventDefault(); if (canSubmit) orderMutation.mutate(); }}
         style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+
+        {/* ── Strategy Model Selector ── */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <label className="form-label">
+              Strategy Model
+            </label>
+            <Link to="/strategies/new" style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-primary-600)', textDecoration: 'none', fontWeight: 600 }}>
+              + Build Strategy
+            </Link>
+          </div>
+          <select
+            className="form-input"
+            value={selectedStrategyId}
+            onChange={e => {
+              setSelectedStrategyId(e.target.value);
+            }}
+          >
+            <option value="">— Optional: Link to a Strategy —</option>
+            {strategies.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name} {s.status === 'DRAFT' ? '• (Draft)' : '• (Active)'}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Strategy Context Banner */}
+        {selectedStrategy && (
+          <div style={{
+            background: 'var(--color-primary-50)',
+            border: '1px solid var(--color-primary-100)',
+            borderRadius: 'var(--radius-lg)',
+            padding: 'var(--space-3) var(--space-4)',
+            fontSize: 'var(--font-size-xs)',
+            color: 'var(--color-primary-800)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 'var(--space-2)',
+          }}>
+            <span>🧩</span>
+            <div>
+              Executing simulated trade for <strong>{selectedStrategy.name}</strong>
+              <div style={{ fontSize: '0.7rem', color: 'var(--color-primary-600)', marginTop: '2px' }}>
+                {selectedStrategy.description || 'Custom multi-indicator trading strategy'}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* BUY / SELL toggle */}
         <div style={{
@@ -217,7 +317,7 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
         </div>
 
         {/* Asset */}
-        <div className="form-group">
+        <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Asset</label>
           <select
             required
@@ -227,34 +327,38 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
           >
             <option value="">— Select asset —</option>
             {assets.map((a: any) => (
-              <option key={a.symbol} value={a.symbol}>{a.symbol} — {a.name}</option>
+              <option key={a.symbol} value={a.symbol}>
+                {a.symbol} — {a.name} (Market: ${Number(a.latest_price || 0).toFixed(2)})
+              </option>
             ))}
           </select>
         </div>
 
         {/* Quantity */}
-        <div className="form-group">
+        <div className="form-group" style={{ marginBottom: 0 }}>
           <label className="form-label">Quantity (Shares)</label>
           <input
             type="number"
             required
-            min="0.0001"
-            step="any"
+            min="1"
+            step="1"
             className="form-input"
             value={quantity}
             onChange={e => setQuantity(e.target.value)}
-            placeholder="0"
+            placeholder="50"
           />
         </div>
 
         {/* Price (optional) */}
-        <div className="form-group">
-          <label className="form-label">
-            Price per Share
-            <span style={{ color: 'var(--color-gray-400)', fontWeight: 'var(--font-weight-normal)', marginLeft: 'var(--space-2)' }}>
-              (optional — uses mock if blank)
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <label className="form-label">
+              Market Price per Share ($)
+            </label>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-primary-600)', fontWeight: 600 }}>
+              Live Market Rate
             </span>
-          </label>
+          </div>
           <div style={{ position: 'relative' }}>
             <span style={{
               position: 'absolute', left: 'var(--space-3)', top: '50%', transform: 'translateY(-50%)',
@@ -268,7 +372,7 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
               style={{ paddingLeft: 'var(--space-7)' }}
               value={price}
               onChange={e => setPrice(e.target.value)}
-              placeholder="0.00"
+              placeholder="150.00"
             />
           </div>
         </div>
@@ -285,7 +389,7 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
             display: 'flex',
             justifyContent: 'space-between',
           }}>
-            <span>Estimated {side === 'BUY' ? 'Cost' : 'Proceeds'}</span>
+            <span>Estimated {side === 'BUY' ? 'Total Cost' : 'Proceeds'}</span>
             <strong>{fmt$(estimatedValue)}</strong>
           </div>
         )}
@@ -300,12 +404,13 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
             boxShadow: side === 'BUY'
               ? '0 4px 15px rgba(5,150,105,0.3)'
               : '0 4px 15px rgba(220,38,38,0.3)',
+            marginTop: 'var(--space-2)',
           }}
           disabled={!canSubmit || orderMutation.isPending}
         >
           {orderMutation.isPending ? (
             <><div className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> Placing...</>
-          ) : `${side === 'BUY' ? '↑ Buy' : '↓ Sell'} ${quantity || '—'} ${symbol || 'shares'}`}
+          ) : `${side === 'BUY' ? '↑ Execute Buy Order' : '↓ Execute Sell Order'} (${quantity || '0'} shares)`}
         </button>
 
         {orderMutation.isError && (
@@ -331,7 +436,7 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
             borderRadius: 'var(--radius-md)',
             fontSize: 'var(--font-size-xs)',
           }}>
-            ✅ Order filled successfully!
+            ✅ Order filled successfully into paper account!
           </div>
         )}
       </form>
@@ -339,8 +444,111 @@ function ManualTradePanel({ accountId }: { accountId: string }) {
   );
 }
 
-/* ─── Positions Table ───────────────────────── */
-function PositionsTable({ positions }: { positions: Position[] }) {
+/* ─── Strategies & Signals List Tab ─────────── */
+function StrategySignalsTab({ 
+  onSelectStrategy 
+}: { 
+  onSelectStrategy: (strat: Strategy) => void 
+}) {
+  const { data: strategies = [], isLoading } = useQuery({
+    queryKey: ['strategies'],
+    queryFn: () => strategiesService.getStrategies(),
+  });
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-12)' }}>
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (strategies.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 'var(--space-16)',
+        textAlign: 'center',
+        color: 'var(--color-gray-400)',
+      }}>
+        <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-3)' }}>🧩</div>
+        <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' }}>No strategies created yet</div>
+        <div style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--space-1)', marginBottom: 'var(--space-4)' }}>
+          Build a strategy to forward-trade it in your paper account.
+        </div>
+        <Link to="/strategies/new" className="btn btn-primary btn-sm">
+          + Create New Strategy
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      {strategies.map((strat) => (
+        <div key={strat.id} style={{
+          background: 'var(--color-white)',
+          border: '1px solid var(--color-gray-200)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 'var(--space-4) var(--space-5)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-4)',
+          flexWrap: 'wrap',
+          transition: 'all var(--transition-fast)',
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: '4px' }}>
+              <span style={{ fontSize: '1rem' }}>🧩</span>
+              <strong style={{ color: 'var(--color-gray-900)', fontSize: 'var(--font-size-sm)' }}>
+                {strat.name}
+              </strong>
+              <span className={`badge badge-${strat.status === 'DRAFT' ? 'neutral' : 'success'}`} style={{ fontSize: '0.65rem' }}>
+                {strat.status}
+              </span>
+            </div>
+            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-gray-500)', margin: 0 }}>
+              {strat.description || 'Custom multi-indicator strategy rules'}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <Link to={`/strategies/${strat.id}`} className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>
+              View Spec
+            </Link>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => onSelectStrategy(strat)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              ⚡ Trade in Paper Account
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Positions Table with Live PnL and Quick Sell ─── */
+function PositionsTable({ 
+  positions, 
+  assets,
+  onQuickSell,
+}: { 
+  positions: Position[];
+  assets: any[];
+  onQuickSell: (symbol: string, quantity: number) => void;
+}) {
   if (positions.length === 0) {
     return (
       <div style={{
@@ -354,7 +562,7 @@ function PositionsTable({ positions }: { positions: Position[] }) {
       }}>
         <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-3)' }}>📭</div>
         <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 'var(--font-weight-medium)' }}>No open positions</div>
-        <div style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--space-1)' }}>Place a BUY order to open a position.</div>
+        <div style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--space-1)' }}>Place a BUY order on the right to open a position.</div>
       </div>
     );
   }
@@ -365,47 +573,96 @@ function PositionsTable({ positions }: { positions: Position[] }) {
         <thead>
           <tr>
             <th>Symbol</th>
-            <th style={{ textAlign: 'right' }}>Quantity</th>
+            <th style={{ textAlign: 'right' }}>Shares</th>
             <th style={{ textAlign: 'right' }}>Avg Entry</th>
-            <th style={{ textAlign: 'right' }}>Est. Value</th>
+            <th style={{ textAlign: 'right' }}>Market Price</th>
+            <th style={{ textAlign: 'right' }}>Market Value</th>
+            <th style={{ textAlign: 'right' }}>Unrealized PnL</th>
+            <th style={{ textAlign: 'center' }}>Action</th>
           </tr>
         </thead>
         <tbody>
-          {positions.map(p => (
-            <tr key={p.symbol}>
-              <td>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  <div style={{
-                    width: '32px', height: '32px',
-                    background: 'var(--color-primary-50)',
-                    borderRadius: 'var(--radius-md)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 'var(--font-weight-bold)',
-                    fontSize: 'var(--font-size-xs)',
-                    color: 'var(--color-primary-700)',
-                    fontFamily: 'monospace',
-                    flexShrink: 0,
-                  }}>
-                    {p.symbol.substring(0, 2)}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-900)', fontFamily: 'monospace' }}>
-                      {p.symbol}
+          {positions.map(p => {
+            const asset = assets.find((a: any) => a.symbol === p.symbol);
+            const marketPrice = asset?.latest_price ? Number(asset.latest_price) : Number(p.average_entry);
+            const marketValue = Number(p.quantity) * marketPrice;
+            const costBasis = Number(p.quantity) * Number(p.average_entry);
+            const pnl = marketValue - costBasis;
+            const pnlPct = costBasis > 0 ? (pnl / costBasis) * 100 : 0;
+            const isProfit = pnl >= 0;
+
+            return (
+              <tr key={p.symbol}>
+                <td>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <div style={{
+                      width: '32px', height: '32px',
+                      background: 'var(--color-primary-50)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 'var(--font-weight-bold)',
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-primary-700)',
+                      fontFamily: 'monospace',
+                      flexShrink: 0,
+                    }}>
+                      {p.symbol.substring(0, 2)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-900)', fontFamily: 'monospace' }}>
+                        {p.symbol}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--color-gray-400)' }}>
+                        {asset?.name || 'Equity'}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </td>
-              <td style={{ textAlign: 'right', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-800)' }}>
-                {Number(p.quantity).toLocaleString()}
-              </td>
-              <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--color-gray-700)' }}>
-                {fmt$(p.average_entry)}
-              </td>
-              <td style={{ textAlign: 'right', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-primary-700)', fontFamily: 'monospace' }}>
-                {fmt$(p.quantity * p.average_entry)}
-              </td>
-            </tr>
-          ))}
+                </td>
+                <td style={{ textAlign: 'right', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-800)' }}>
+                  {Number(p.quantity).toLocaleString()}
+                </td>
+                <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--color-gray-600)' }}>
+                  {fmt$(p.average_entry)}
+                </td>
+                <td style={{ textAlign: 'right', fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-gray-900)' }}>
+                  {fmt$(marketPrice)}
+                </td>
+                <td style={{ textAlign: 'right', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-primary-700)', fontFamily: 'monospace' }}>
+                  {fmt$(marketValue)}
+                </td>
+                <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                  <div style={{
+                    color: isProfit ? 'var(--color-success-600)' : 'var(--color-danger-600)',
+                    fontWeight: 'var(--font-weight-bold)',
+                  }}>
+                    {isProfit ? '+' : ''}{fmt$(pnl)}
+                  </div>
+                  <div style={{
+                    fontSize: '0.68rem',
+                    color: isProfit ? 'var(--color-success-600)' : 'var(--color-danger-600)',
+                  }}>
+                    {fmtPct(pnlPct)}
+                  </div>
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => onQuickSell(p.symbol, Number(p.quantity))}
+                    style={{
+                      padding: '2px 10px',
+                      fontSize: 'var(--font-size-xs)',
+                      color: 'var(--color-danger-600)',
+                      border: '1px solid var(--color-danger-200)',
+                      background: 'var(--color-danger-50)',
+                    }}
+                  >
+                    Sell / Close
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -502,7 +759,11 @@ function OrdersTable({ orders, isLoading }: { orders: PaperOrder[]; isLoading: b
 /* ─── Main Page ─────────────────────────────── */
 export function PaperTradingPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'positions' | 'orders'>('positions');
+  const [activeTab, setActiveTab] = useState<'positions' | 'orders' | 'strategies'>('positions');
+  const [activeStrategy, setActiveStrategy] = useState<Strategy | null>(null);
+  const [prefillSymbol, setPrefillSymbol] = useState<string>('AAPL');
+  const [prefillSide, setPrefillSide] = useState<'BUY' | 'SELL'>('BUY');
+  const [prefillQty, setPrefillQty] = useState<string>('50');
 
   const { data: account, isLoading: isLoadingAccount } = useQuery({
     queryKey: ['paper-account'],
@@ -515,9 +776,27 @@ export function PaperTradingPage() {
     enabled: !!account,
   });
 
+  const { data: assets = [] } = useQuery({
+    queryKey: ['assets'],
+    queryFn: marketService.getAssets,
+  });
+
+  const { data: strategies = [] } = useQuery({
+    queryKey: ['strategies'],
+    queryFn: () => strategiesService.getStrategies(),
+  });
+
   const initMutation = useMutation({
     mutationFn: () => paperService.initAccount('My Paper Account', 100000),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['paper-account'] }),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: () => paperService.resetAccount(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['paper-account'] });
+      queryClient.invalidateQueries({ queryKey: ['paper-orders'] });
+    },
   });
 
   if (isLoadingAccount) {
@@ -533,23 +812,39 @@ export function PaperTradingPage() {
     return <NoAccountView onInit={() => initMutation.mutate()} isPending={initMutation.isPending} />;
   }
 
-  const totalPositionValue = account.positions.reduce(
-    (sum, p) => sum + Number(p.quantity) * Number(p.average_entry), 0
-  );
-  const totalEquity = account.cash + totalPositionValue;
+  // Calculate live market position value based on current prices
+  const totalPositionMarketValue = account.positions.reduce((sum, p) => {
+    const asset = assets.find((a: any) => a.symbol === p.symbol);
+    const mPrice = asset?.latest_price ? Number(asset.latest_price) : Number(p.average_entry);
+    return sum + Number(p.quantity) * mPrice;
+  }, 0);
+
+  const totalEquity = account.cash + totalPositionMarketValue;
   const totalReturn = ((totalEquity - account.initial_capital) / account.initial_capital) * 100;
-  const investedPct = totalEquity > 0 ? (totalPositionValue / totalEquity) * 100 : 0;
+  const investedPct = totalEquity > 0 ? (totalPositionMarketValue / totalEquity) * 100 : 0;
 
   const tabs = [
-    { key: 'positions' as const, label: '📂 Positions', count: account.positions.length },
+    { key: 'positions' as const, label: '📂 Open Positions', count: account.positions.length },
     { key: 'orders' as const, label: '📋 Order History', count: orders.length },
+    { key: 'strategies' as const, label: '🧩 My Strategies', count: strategies.length },
   ];
+
+  const handleSelectStrategyToTrade = (strat: Strategy) => {
+    setActiveStrategy(strat);
+    setActiveTab('positions');
+  };
+
+  const handleQuickSell = (sym: string, qty: number) => {
+    setPrefillSymbol(sym);
+    setPrefillSide('SELL');
+    setPrefillQty(qty.toString());
+  };
 
   return (
     <div className="animate-fadeIn" style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
       {/* ── Page Header ── */}
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
         <div>
           <div style={{
             display: 'inline-flex',
@@ -569,8 +864,29 @@ export function PaperTradingPage() {
             🟢 Simulated Environment
           </div>
           <h1 className="page-title">Paper Trading</h1>
-          <p className="page-subtitle">{account.name} · Practice with virtual capital, zero real risk.</p>
+          <p className="page-subtitle">{account.name} · Practice and forward-test your strategies with zero real risk.</p>
         </div>
+
+        {/* Quick Reset Account Button */}
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            if (window.confirm('Reset virtual paper trading account back to $100,000 cash and clear order history?')) {
+              resetMutation.mutate();
+            }
+          }}
+          disabled={resetMutation.isPending}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            color: 'var(--color-gray-600)',
+            border: '1px solid var(--color-gray-200)',
+          }}
+        >
+          {resetMutation.isPending ? 'Resetting...' : '🔄 Reset Account ($100k)'}
+        </button>
       </div>
 
       {/* ── Stat Tiles ── */}
@@ -578,7 +894,7 @@ export function PaperTradingPage() {
         <AccountTile
           label="Total Equity"
           value={fmt$(totalEquity)}
-          sub="Cash + Positions"
+          sub="Cash + Live Positions"
           icon="💼"
           valueColor="var(--color-gray-900)"
         />
@@ -593,98 +909,136 @@ export function PaperTradingPage() {
         />
         <AccountTile
           label="Positions Value"
-          value={fmt$(totalPositionValue)}
+          value={fmt$(totalPositionMarketValue)}
           sub={`${investedPct.toFixed(1)}% deployed`}
           icon="📦"
           valueColor="var(--color-gray-800)"
         />
         <AccountTile
-          label="Total Return"
+          label="Simulated Return"
           value={fmtPct(totalReturn)}
           sub={`Initial: ${fmt$(account.initial_capital)}`}
-          icon={totalReturn >= 0 ? '📈' : '📉'}
+          icon="📈"
           valueColor={totalReturn >= 0 ? 'var(--color-success-600)' : 'var(--color-danger-600)'}
           bg={totalReturn >= 0 ? 'var(--color-success-50)' : 'var(--color-danger-50)'}
           border={totalReturn >= 0 ? 'var(--color-success-100)' : 'var(--color-danger-100)'}
         />
       </div>
 
-      {/* ── Equity bar ── */}
-      <div style={{ marginBottom: 'var(--space-6)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-size-xs)', color: 'var(--color-gray-400)', marginBottom: 'var(--space-1)' }}>
-          <span>Cash ({(100 - investedPct).toFixed(1)}%)</span>
-          <span>Invested ({investedPct.toFixed(1)}%)</span>
+      {/* ── Equity Allocation Bar ── */}
+      <div className="card" style={{ padding: 'var(--space-5)', marginBottom: 'var(--space-6)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+          <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--color-gray-600)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Capital Allocation
+          </span>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', fontSize: 'var(--font-size-xs)' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary-500)', display: 'inline-block' }} />
+              Positions ({investedPct.toFixed(1)}%)
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-gray-300)', display: 'inline-block' }} />
+              Cash ({(100 - investedPct).toFixed(1)}%)
+            </span>
+          </div>
         </div>
-        <div style={{ height: '6px', borderRadius: 'var(--radius-full)', background: 'var(--color-gray-200)', overflow: 'hidden' }}>
+        <div style={{
+          height: '10px',
+          background: 'var(--color-gray-200)',
+          borderRadius: 'var(--radius-full)',
+          overflow: 'hidden',
+        }}>
           <div style={{
             height: '100%',
             width: `${investedPct}%`,
-            background: 'linear-gradient(90deg, var(--color-primary-400), var(--color-primary-600))',
+            background: 'linear-gradient(90deg, var(--color-primary-500), var(--color-primary-600))',
             borderRadius: 'var(--radius-full)',
-            transition: 'width var(--transition-smooth)',
+            transition: 'width 0.4s ease',
           }} />
         </div>
       </div>
 
-      {/* ── Main layout ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
+      {/* ── Main Two-Column Layout ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1.4fr) minmax(360px, 1fr)',
+        gap: 'var(--space-6)',
+        alignItems: 'start',
+      }}>
 
-        {/* Left: Trade Form */}
-        <ManualTradePanel accountId={account.id} />
-
-        {/* Right: Positions / Orders */}
-        <div className="card" style={{ overflow: 'hidden' }}>
+        {/* Left Column: Tabbed Views */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          
           {/* Tab bar */}
           <div style={{
             display: 'flex',
             borderBottom: '1px solid var(--color-gray-100)',
-            padding: '0 var(--space-6)',
             background: 'var(--color-gray-50)',
+            padding: 'var(--space-1) var(--space-4) 0',
+            gap: 'var(--space-2)',
           }}>
-            {tabs.map(tab => (
+            {tabs.map(t => (
               <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                key={t.key}
+                type="button"
+                onClick={() => setActiveTab(t.key)}
                 style={{
-                  padding: 'var(--space-4) var(--space-3)',
-                  marginRight: 'var(--space-4)',
-                  background: 'none',
+                  padding: 'var(--space-3) var(--space-4)',
                   border: 'none',
-                  borderBottom: `2px solid ${activeTab === tab.key ? 'var(--color-primary-600)' : 'transparent'}`,
-                  color: activeTab === tab.key ? 'var(--color-primary-700)' : 'var(--color-gray-500)',
-                  fontWeight: activeTab === tab.key ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                  fontSize: 'var(--font-size-sm)',
+                  borderBottom: activeTab === t.key ? '2px solid var(--color-primary-600)' : '2px solid transparent',
+                  background: 'transparent',
                   cursor: 'pointer',
-                  transition: 'all var(--transition-base)',
+                  fontWeight: activeTab === t.key ? 'var(--font-weight-semibold)' : 'var(--font-weight-normal)',
+                  fontSize: 'var(--font-size-sm)',
+                  color: activeTab === t.key ? 'var(--color-primary-700)' : 'var(--color-gray-500)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 'var(--space-2)',
-                  whiteSpace: 'nowrap',
+                  transition: 'all var(--transition-fast)',
                 }}
               >
-                {tab.label}
-                {tab.count > 0 && (
-                  <span style={{
-                    background: activeTab === tab.key ? 'var(--color-primary-100)' : 'var(--color-gray-200)',
-                    color: activeTab === tab.key ? 'var(--color-primary-700)' : 'var(--color-gray-500)',
-                    borderRadius: 'var(--radius-full)',
-                    fontSize: '0.65rem',
-                    fontWeight: 'var(--font-weight-bold)',
-                    padding: '1px 7px',
-                    lineHeight: '1.4',
-                  }}>
-                    {tab.count}
-                  </span>
-                )}
+                {t.label}
+                <span style={{
+                  fontSize: 'var(--font-size-xs)',
+                  padding: '1px 6px',
+                  borderRadius: 'var(--radius-full)',
+                  background: activeTab === t.key ? 'var(--color-primary-100)' : 'var(--color-gray-200)',
+                  color: activeTab === t.key ? 'var(--color-primary-700)' : 'var(--color-gray-600)',
+                  fontWeight: 'var(--font-weight-semibold)',
+                }}>
+                  {t.count}
+                </span>
               </button>
             ))}
           </div>
 
-          {/* Tab content */}
-          {activeTab === 'positions' && <PositionsTable positions={account.positions} />}
-          {activeTab === 'orders' && <OrdersTable orders={orders} isLoading={isLoadingOrders} />}
+          {/* Tab body */}
+          <div style={{ padding: 'var(--space-5)' }}>
+            {activeTab === 'positions' && (
+              <PositionsTable 
+                positions={account.positions} 
+                assets={assets}
+                onQuickSell={handleQuickSell}
+              />
+            )}
+            {activeTab === 'orders' && <OrdersTable orders={orders} isLoading={isLoadingOrders} />}
+            {activeTab === 'strategies' && <StrategySignalsTab onSelectStrategy={handleSelectStrategyToTrade} />}
+          </div>
         </div>
+
+        {/* Right Column: Order Placement Panel */}
+        <div style={{ position: 'sticky', top: 'var(--space-6)' }}>
+          <ManualTradePanel 
+            accountId={account.id} 
+            prefillStrategy={activeStrategy}
+            prefillSymbol={prefillSymbol}
+            prefillSide={prefillSide}
+            prefillQuantity={prefillQty}
+          />
+        </div>
+
       </div>
+
     </div>
   );
 }

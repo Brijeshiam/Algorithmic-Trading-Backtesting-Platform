@@ -40,4 +40,13 @@ export class PaperController {
       next(error);
     }
   }
+
+  static async resetAccount(req: Request, res: Response, next: NextFunction) {
+    try {
+      const account = await PaperService.resetAccount(req.user!.id);
+      res.status(200).json(account);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

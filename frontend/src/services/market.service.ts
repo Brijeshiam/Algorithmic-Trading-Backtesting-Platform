@@ -10,6 +10,7 @@ export interface Asset {
   data_start?: string;
   data_end?: string;
   candle_count?: number;
+  latest_price?: number;
 }
 
 export interface OHLCVCandle {

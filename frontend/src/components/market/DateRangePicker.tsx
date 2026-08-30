@@ -8,13 +8,12 @@ interface DateRangePickerProps {
 }
 
 export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRangePickerProps) {
-  const setPreset = (months: number) => {
-    const end = new Date();
-    const start = new Date();
-    start.setMonth(start.getMonth() - months);
-    onToChange(end.toISOString().slice(0, 10));
-    onFromChange(start.toISOString().slice(0, 10));
-  };
+  const PRESETS = [
+    { label: 'Full 5 Years (2020–2024)', start: '2020-01-02', end: '2024-12-31' },
+    { label: '3 Years (2022–2024)', start: '2022-01-01', end: '2024-12-31' },
+    { label: '2 Years (2023–2024)', start: '2023-01-01', end: '2024-12-31' },
+    { label: '1 Year (2024)', start: '2024-01-01', end: '2024-12-31' },
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -26,6 +25,8 @@ export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRang
           </span>
           <input
             type="date"
+            min="2020-01-02"
+            max="2024-12-31"
             value={from}
             onChange={(e) => onFromChange(e.target.value)}
             className="form-input"
@@ -38,6 +39,8 @@ export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRang
           </span>
           <input
             type="date"
+            min="2020-01-02"
+            max="2024-12-31"
             value={to}
             onChange={(e) => onToChange(e.target.value)}
             className="form-input"
@@ -48,24 +51,22 @@ export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRang
 
       {/* Quick Presets */}
       <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-        {[
-          { label: '6 Months', months: 6 },
-          { label: '1 Year', months: 12 },
-          { label: '2 Years', months: 24 },
-          { label: '3 Years', months: 36 },
-        ].map(p => (
+        {PRESETS.map(p => (
           <button
             key={p.label}
             type="button"
-            onClick={() => setPreset(p.months)}
+            onClick={() => {
+              onFromChange(p.start);
+              onToChange(p.end);
+            }}
             style={{
-              padding: '2px 8px',
+              padding: '3px 10px',
               fontSize: '0.7rem',
               fontWeight: 'var(--font-weight-semibold)',
-              background: 'var(--color-gray-100)',
-              border: '1px solid var(--color-gray-200)',
+              background: (from === p.start && to === p.end) ? 'var(--color-primary-50)' : 'var(--color-gray-100)',
+              border: `1px solid ${(from === p.start && to === p.end) ? 'var(--color-primary-300)' : 'var(--color-gray-200)'}`,
               borderRadius: 'var(--radius-full)',
-              color: 'var(--color-gray-600)',
+              color: (from === p.start && to === p.end) ? 'var(--color-primary-700)' : 'var(--color-gray-600)',
               cursor: 'pointer',
               transition: 'all var(--transition-fast)',
             }}
@@ -75,9 +76,10 @@ export function DateRangePicker({ from, to, onFromChange, onToChange }: DateRang
               (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-primary-200)';
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLElement).style.background = 'var(--color-gray-100)';
-              (e.currentTarget as HTMLElement).style.color = 'var(--color-gray-600)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-gray-200)';
+              const isSel = from === p.start && to === p.end;
+              (e.currentTarget as HTMLElement).style.background = isSel ? 'var(--color-primary-50)' : 'var(--color-gray-100)';
+              (e.currentTarget as HTMLElement).style.color = isSel ? 'var(--color-primary-700)' : 'var(--color-gray-600)';
+              (e.currentTarget as HTMLElement).style.borderColor = isSel ? 'var(--color-primary-300)' : 'var(--color-gray-200)';
             }}
           >
             {p.label}

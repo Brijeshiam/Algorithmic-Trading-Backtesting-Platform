@@ -8,6 +8,7 @@ router.use(authenticate);
 
 router.get('/account', PaperController.getAccount);
 router.post('/account', PaperController.initAccount);
+router.post('/account/reset', PaperController.resetAccount);
 
 router.get('/orders', PaperController.getOrders);
 router.post('/orders', PaperController.placeOrder);

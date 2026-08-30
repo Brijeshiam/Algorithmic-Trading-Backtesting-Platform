@@ -109,4 +109,23 @@ export class PaperService {
 
     return res.rows;
   }
+
+  static async resetAccount(userId: string) {
+    const account = await this.getAccount(userId);
+    if (!account) throw new AppError('Paper account not found', 404);
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM paper_orders WHERE account_id = $1', [account.id]);
+      await client.query('UPDATE paper_accounts SET cash = initial_capital WHERE id = $1', [account.id]);
+      await client.query('COMMIT');
+      return this.getAccount(userId);
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
 }

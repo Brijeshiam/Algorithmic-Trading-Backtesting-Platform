@@ -15,8 +15,8 @@ export function BacktestSetupPage() {
 
   const [strategyId, setStrategyId] = useState(stateStrategyId);
   const [symbol, setSymbol] = useState('AAPL');
-  const [from, setFrom] = useState('2023-01-01');
-  const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
+  const [from, setFrom] = useState('2020-01-02');
+  const [to, setTo] = useState('2024-12-31');
   const [capital, setCapital] = useState(100000);
   const [commission, setCommission] = useState(0.1);
   const [slippage, setSlippage] = useState(0.05);

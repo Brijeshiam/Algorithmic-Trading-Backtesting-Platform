@@ -50,5 +50,10 @@ export const paperService = {
   async getOrders(): Promise<PaperOrder[]> {
     const res = await api.get('/paper/orders');
     return res.data;
+  },
+
+  async resetAccount(): Promise<PaperAccount> {
+    const res = await api.post('/paper/account/reset');
+    return res.data;
   }
 };

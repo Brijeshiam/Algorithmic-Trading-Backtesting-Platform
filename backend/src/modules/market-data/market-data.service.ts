@@ -11,6 +11,7 @@ export interface Asset {
   data_start?: string;
   data_end?: string;
   candle_count?: number;
+  latest_price?: number;
 }
 
 export interface OHLCVCandle {
@@ -32,7 +33,14 @@ export class MarketDataService {
         a.id, a.symbol, a.name, a.exchange, a.asset_type, a.created_at,
         MIN(md.timestamp) AS data_start,
         MAX(md.timestamp) AS data_end,
-        COUNT(md.id)::int AS candle_count
+        COUNT(md.id)::int AS candle_count,
+        (
+          SELECT close::float 
+          FROM market_data 
+          WHERE asset_id = a.id 
+          ORDER BY timestamp DESC 
+          LIMIT 1
+        ) AS latest_price
       FROM assets a
       LEFT JOIN market_data md ON md.asset_id = a.id
       GROUP BY a.id
