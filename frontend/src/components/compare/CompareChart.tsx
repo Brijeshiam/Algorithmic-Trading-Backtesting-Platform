@@ -79,7 +79,7 @@ export function CompareChart({ backtests }: CompareChartProps) {
       },
     },
     grid: {
-      borderColor: '#f3f4f6',
+      borderColor: '#d1d5db',
       strokeDashArray: 4,
       xaxis: { lines: { show: true } },
     },
